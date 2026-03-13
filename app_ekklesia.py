@@ -30,10 +30,19 @@ COR_BORDA     = "#2A2A2A"
 COR_TEXTO     = "#F0F0F0"
 COR_SUBTEXTO  = "#A0A0A0"
 
-PALETTE_REDES = [
-    "#E8770A","#F59B2B","#C45C08","#FF9F45","#7A3D00",
-    "#FFB347","#D46A06","#E8A87C","#B35900","#FFCC80",
-]
+# Paleta com as cores oficiais das redes
+CORES_REDES = {
+    "instagram": "#E1306C",
+    "facebook": "#1877F2",
+    "tiktok": "#25F4EE",
+    "x": "#1DA1F2",
+    "youtube": "#FF0000",
+    "linkedin": "#0A66C2",
+    "reddit": "#FF4500",
+    "threads": "#000000",
+    "bluesky": "#0285FF",
+    "desconhecido": "#888888"
+}
 
 # ════════════════════════════════════════════════════════════════
 # HELPERS GERAIS
@@ -123,17 +132,14 @@ def safe_date_filter(df, periodo):
         return df
     try:
         col = df["data"].copy()
-        # Remove timezone se presente
         if hasattr(col.dtype, "tz") and col.dtype.tz is not None:
             col = col.dt.tz_localize(None)
         elif col.dtype == object:
             col = pd.to_datetime(col, errors="coerce")
-        # Converte para date
         col_date = col.dt.date
         mask = (col_date >= periodo[0]) & (col_date <= periodo[1])
         return df[mask]
     except Exception:
-        # Fallback: tenta converter tudo
         try:
             datas = pd.to_datetime(df["data"], errors="coerce", utc=True).dt.tz_localize(None)
             mask = (datas.dt.date >= periodo[0]) & (datas.dt.date <= periodo[1])
@@ -363,15 +369,8 @@ def parse_apify(file_bytes):
     return to_schema(rows)
 
 def parse_ir2(file_bytes):
-    """
-    Lê SOMENTE a aba 'global' do arquivo IR².
-    Chave: coluna 'autor_normalizado' (ou primeira coluna).
-    Score: coluna 'ranking global' (ou última coluna numérica).
-    Retorna dict {autor_normalizado_lower: score_global}.
-    """
     xl = pd.ExcelFile(io.BytesIO(file_bytes), engine="openpyxl")
 
-    # Tenta encontrar a aba 'global' (case-insensitive)
     aba_global = None
     for sheet in xl.sheet_names:
         if sheet.strip().lower() == "global":
@@ -379,27 +378,23 @@ def parse_ir2(file_bytes):
             break
 
     if aba_global is None:
-        # Fallback: usa a primeira aba
         aba_global = xl.sheet_names[0]
 
     df = xl.parse(aba_global, dtype=str)
     df.columns = df.columns.str.strip()
 
-    # Encontra a coluna de autor (primeira coluna ou 'autor_normalizado')
     col_autor = df.columns[0]
     for c in df.columns:
         if "autor" in c.lower():
             col_autor = c
             break
 
-    # Encontra a coluna de score global ('ranking global' ou similar)
     col_score = None
     for c in df.columns:
         if "global" in c.lower() and "ranking" in c.lower():
             col_score = c
             break
     if col_score is None:
-        # Fallback: última coluna numérica
         for c in reversed(df.columns):
             if c != col_autor:
                 vals = pd.to_numeric(df[c], errors="coerce").dropna()
@@ -424,9 +419,6 @@ def parse_ir2(file_bytes):
     return scores
 
 def parse_ir2_full(file_bytes):
-    """
-    Retorna DataFrame completo da aba 'global' com todas as colunas de ranking.
-    """
     xl = pd.ExcelFile(io.BytesIO(file_bytes), engine="openpyxl")
     aba_global = None
     for sheet in xl.sheet_names:
@@ -441,7 +433,7 @@ def parse_ir2_full(file_bytes):
     return df
 
 # ════════════════════════════════════════════════════════════════
-# CORPUS IRAMUTEQ — sem spaCy, usando nltk
+# CORPUS IRAMUTEQ
 # ════════════════════════════════════════════════════════════════
 @st.cache_resource(show_spinner="Carregando recursos de linguagem…")
 def load_stopwords_pt():
@@ -453,7 +445,6 @@ def load_stopwords_pt():
             nltk.download("stopwords", quiet=True)
             return set(nltk.corpus.stopwords.words("portuguese"))
     except Exception:
-        # Stopwords mínimas embutidas se nltk falhar
         return set([
             "de","a","o","que","e","do","da","em","um","para","com","uma","os","no",
             "se","na","por","mais","as","dos","como","mas","ao","ele","das","à","seu",
@@ -464,7 +455,6 @@ def load_stopwords_pt():
         ])
 
 def gerar_corpus(df_filtrado):
-    """Gera corpus Iramuteq usando nltk (sem spaCy, compatível com Python 3.14)."""
     import re as _re
     stopwords_pt = load_stopwords_pt()
 
@@ -503,7 +493,7 @@ def gerar_corpus(df_filtrado):
     return "\n".join(linhas)
 
 # ════════════════════════════════════════════════════════════════
-# GRAFO INTERATIVO (TF-IDF + NetworkX)
+# GRAFO INTERATIVO
 # ════════════════════════════════════════════════════════════════
 def gerar_grafo(df_filtrado, dias_bloco=7, max_termos=12):
     import networkx as nx
@@ -551,7 +541,6 @@ def gerar_grafo(df_filtrado, dias_bloco=7, max_termos=12):
         max_c = max(cent.values()) or 1
         pos = nx.spring_layout(G, k=2.5/np.sqrt(len(G.nodes())), iterations=50, seed=42)
 
-        # Anti-colisão limitada (50 iter)
         nodes = list(G.nodes())
         for _ in range(50):
             moved = False
@@ -654,7 +643,6 @@ def gerar_grafo(df_filtrado, dias_bloco=7, max_termos=12):
 def unificar(frames, ir2_scores):
     df = pd.concat(frames, ignore_index=True)
 
-    # Trata timezone robusto
     df["data"] = pd.to_datetime(df["data"], errors="coerce", utc=False)
     try:
         if hasattr(df["data"].dtype, "tz") and df["data"].dtype.tz is not None:
@@ -711,10 +699,9 @@ def unificar(frames, ir2_scores):
     return df[FINAL_COLS].reset_index(drop=True)
 
 # ════════════════════════════════════════════════════════════════
-# ANÁLISE DE IA (Claude API)
+# ANÁLISE DE IA
 # ════════════════════════════════════════════════════════════════
 def gerar_analise_ia(df_resumo: dict) -> str:
-    """Chama a API do Claude para gerar análise dos dados."""
     try:
         import anthropic
         client = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
@@ -842,6 +829,15 @@ html, body, [data-testid="stApp"] {{
     color: #000 !important;
 }}
 
+/* ── Labels dos Filtros (Select, MultiSelect, Date) ── */
+[data-testid="stSelectbox"] label p,
+[data-testid="stMultiSelect"] label p,
+[data-testid="stDateInput"] label p {{
+    font-size: 1.15rem !important;
+    font-weight: 600 !important;
+    color: {COR_LARANJA} !important;
+}}
+
 /* ── Tabelas / dataframes ── */
 [data-testid="stDataFrame"] {{
     border: 1px solid {COR_BORDA} !important;
@@ -929,7 +925,7 @@ if "ir2_scores" not in st.session_state:
 if "ir2_df_full" not in st.session_state:
     st.session_state.ir2_df_full = None
 if "etapa" not in st.session_state:
-    st.session_state.etapa = "upload"  # "upload" ou "dashboard"
+    st.session_state.etapa = "upload"
 if "analise_ia_texto" not in st.session_state:
     st.session_state.analise_ia_texto = None
 if "fig_grafo" not in st.session_state:
@@ -941,14 +937,10 @@ if "corpus_txt" not in st.session_state:
 # SIDEBAR
 # ════════════════════════════════════════════════════════════════
 with st.sidebar:
-    # Logo Ekklesia
+    # Logo Ekklesia (usando a imagem enviada)
+    st.image("ekklesia_logo_4k.png", use_container_width=True)
     st.markdown(f"""
-    <div style="text-align:center; padding: 8px 0 16px;">
-        <span style="font-size:2.2rem; font-weight:900;
-            background: linear-gradient(135deg, {COR_LARANJA}, {COR_LARANJA2});
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-            ekklesia
-        </span>
+    <div style="text-align:center; margin-bottom: 16px;">
         <div style="font-size:0.7rem; color:{COR_SUBTEXTO}; letter-spacing:0.15em; margin-top:-4px;">
             MONITOR DE NARRATIVAS
         </div>
@@ -984,7 +976,7 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
 
-    # Logo Nexus no rodapé da sidebar
+    # Logo Nexus no rodapé
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown(f"""
     <div style="text-align:center; padding-top:8px; border-top:1px solid {COR_BORDA}; margin-top:auto;">
@@ -999,7 +991,6 @@ with st.sidebar:
 # ETAPA 1 — UPLOAD
 # ════════════════════════════════════════════════════════════════
 if st.session_state.etapa == "upload":
-    # Header
     st.markdown(f"""
     <div style="margin-bottom: 2rem;">
         <h1 style="margin-bottom:4px;">🏛️ Ekklesia</h1>
@@ -1015,22 +1006,32 @@ if st.session_state.etapa == "upload":
         st.markdown(f"### 📁 Upload das bases")
         st.markdown(f"<p style='color:{COR_SUBTEXTO}; font-size:0.9rem;'>Selecione os arquivos das plataformas de monitoramento. Você pode enviar uma ou mais fontes.</p>", unsafe_allow_html=True)
 
-        c1, c2 = st.columns(2)
+        c1, c2 = st.columns(2, gap="large")
+        
         with c1:
             st.markdown(f"<div class='upload-card'><b style='color:{COR_LARANJA}'>📡 Brandwatch</b><br><small style='color:{COR_SUBTEXTO}'>*Uso_Geral*.xlsx</small></div>", unsafe_allow_html=True)
             f_bw = st.file_uploader("Brandwatch", type=["xlsx","csv"], key="bw", label_visibility="collapsed")
+            
+            st.markdown("<br>", unsafe_allow_html=True) # Respiro
 
-            st.markdown(f"<div class='upload-card' style='margin-top:12px;'><b style='color:{COR_LARANJA}'>📊 Stilingue</b><br><small style='color:{COR_SUBTEXTO}'>RelatorioExpress*.xlsx</small></div>", unsafe_allow_html=True)
-            f_st = st.file_uploader("Stilingue", type=["xlsx","csv"], key="st", label_visibility="collapsed")
-
-            st.markdown(f"<div class='upload-card' style='margin-top:12px;'><b style='color:{COR_LARANJA}'>🏆 IR² (ranking)</b><br><small style='color:{COR_SUBTEXTO}'>ranking-compilado*.xlsx — aba 'global'</small></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='upload-card'><b style='color:{COR_LARANJA}'>🏆 IR² (ranking)</b><br><small style='color:{COR_SUBTEXTO}'>ranking-compilado*.xlsx — aba 'global'</small></div>", unsafe_allow_html=True)
             f_ir2 = st.file_uploader("IR²", type=["xlsx","csv"], key="ir2", label_visibility="collapsed")
 
         with c2:
             st.markdown(f"<div class='upload-card'><b style='color:{COR_LARANJA}'>📈 SuperMetrics</b><br><small style='color:{COR_SUBTEXTO}'>*Energisa*.xlsx</small></div>", unsafe_allow_html=True)
             f_sm = st.file_uploader("SuperMetrics", type=["xlsx","csv"], key="sm", label_visibility="collapsed")
+            
+            st.markdown("<br>", unsafe_allow_html=True) # Respiro
 
-            st.markdown(f"<div class='upload-card' style='margin-top:12px;'><b style='color:{COR_LARANJA}'>🎵 Apify / TikTok</b><br><small style='color:{COR_SUBTEXTO}'>dataset_tiktok*.xlsx</small></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='upload-card'><b style='color:{COR_LARANJA}'>📊 Stilingue</b><br><small style='color:{COR_SUBTEXTO}'>RelatorioExpress*.xlsx</small></div>", unsafe_allow_html=True)
+            f_st = st.file_uploader("Stilingue", type=["xlsx","csv"], key="st", label_visibility="collapsed")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Centralizando o último upload para simetria
+        c_center1, c_center2, c_center3 = st.columns([1, 2, 1])
+        with c_center2:
+            st.markdown(f"<div class='upload-card'><b style='color:{COR_LARANJA}'>🎵 Apify / TikTok</b><br><small style='color:{COR_SUBTEXTO}'>dataset_tiktok*.xlsx</small></div>", unsafe_allow_html=True)
             f_ap = st.file_uploader("Apify / TikTok", type=["xlsx","csv"], key="ap", label_visibility="collapsed")
 
         st.markdown("<br>", unsafe_allow_html=True)
@@ -1050,7 +1051,6 @@ if st.session_state.etapa == "upload":
         </div>
         """, unsafe_allow_html=True)
 
-    # Processa bases
     if processar:
         if not any([f_bw, f_sm, f_st, f_ap]):
             st.warning("⚠️ Envie ao menos uma base para processar.")
@@ -1085,7 +1085,6 @@ if st.session_state.etapa == "upload":
             st.session_state.corpus_txt = None
             st.rerun()
 
-    # Se já tem dados, mostra botão para ir ao dashboard
     if st.session_state.df is not None and not processar:
         st.info(f"✅ Base já carregada com **{len(st.session_state.df):,}** publicações. Clique em **Dashboard** no menu lateral para visualizar.")
 
@@ -1119,7 +1118,6 @@ elif st.session_state.etapa == "dashboard":
             st.markdown("<br>", unsafe_allow_html=True)
             st.button("Aplicar filtro", use_container_width=True)
 
-    # Aplica filtros
     df = df_full.copy()
     if "Todas" not in redes_sel and redes_sel:
         df = df[df["canal"].isin(redes_sel)]
@@ -1128,7 +1126,6 @@ elif st.session_state.etapa == "dashboard":
 
     st.divider()
 
-    # ── Tabs ──────────────────────────────────────────────────────
     tab_vis, tab_grafo, tab_ir2, tab_tempo, tab_pub, tab_corpus = st.tabs([
         "📊 Visão geral",
         "🔗 Grafo de narrativas",
@@ -1141,7 +1138,6 @@ elif st.session_state.etapa == "dashboard":
     XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     PNG  = "image/png"
 
-    # Paleta de gráficos
     def plotly_dark_layout(**kwargs):
         return dict(
             plot_bgcolor="#111111",
@@ -1163,7 +1159,6 @@ elif st.session_state.etapa == "dashboard":
         c3.metric("Publicadores únicos", f"{total_pubs:,}")
         c4.metric("Redes monitoradas", redes_n)
 
-        # Análise de IA
         st.markdown(f"<h4 style='color:{COR_LARANJA}; margin-top:1.5rem;'>🤖 Análise de IA</h4>", unsafe_allow_html=True)
 
         col_ia1, col_ia2 = st.columns([1, 4])
@@ -1171,7 +1166,6 @@ elif st.session_state.etapa == "dashboard":
             gerar_ia = st.button("✨ Gerar análise", type="primary", use_container_width=True)
         with col_ia2:
             if gerar_ia:
-                # Monta resumo da base para a IA
                 by_canal_resumo = df.groupby("canal", dropna=False).agg(
                     publicacoes=("canal","count"),
                     interacoes=("interacoes", lambda x: int(x.sum(skipna=True)))
@@ -1207,7 +1201,6 @@ elif st.session_state.etapa == "dashboard":
 
         st.markdown("---")
 
-        # Distribuição por rede
         by_canal = (
             df.groupby("canal", dropna=False)
             .agg(publicacoes=("canal","count"),
@@ -1225,22 +1218,22 @@ elif st.session_state.etapa == "dashboard":
         with col_a:
             fig_posts = px.pie(by_canal, names="canal", values="publicacoes",
                                title="Publicações por rede",
-                               hole=0.5, color_discrete_sequence=PALETTE_REDES)
+                               hole=0.5, color="canal", color_discrete_map=CORES_REDES)
             fig_posts.update_traces(textinfo="percent+label", textfont_color="white")
             fig_posts.update_layout(**plotly_dark_layout(
                 title_font_color=COR_LARANJA,
-                legend=dict(font=dict(color=COR_TEXTO))
+                showlegend=False
             ))
             st.plotly_chart(fig_posts, use_container_width=True)
 
         with col_b:
             fig_inter = px.pie(by_canal, names="canal", values="interacoes",
                                title="Interações por rede",
-                               hole=0.5, color_discrete_sequence=PALETTE_REDES)
+                               hole=0.5, color="canal", color_discrete_map=CORES_REDES)
             fig_inter.update_traces(textinfo="percent+label", textfont_color="white")
             fig_inter.update_layout(**plotly_dark_layout(
                 title_font_color=COR_LARANJA,
-                legend=dict(font=dict(color=COR_TEXTO))
+                showlegend=False
             ))
             st.plotly_chart(fig_inter, use_container_width=True)
 
@@ -1250,7 +1243,6 @@ elif st.session_state.etapa == "dashboard":
             use_container_width=True, hide_index=True
         )
 
-        # Sentimento
         if df["sentimento"].notna().any():
             st.markdown(f"#### Distribuição de sentimento")
             sent = df["sentimento"].value_counts(dropna=True).reset_index()
@@ -1270,7 +1262,6 @@ elif st.session_state.etapa == "dashboard":
             fig_sent.update_traces(textposition="outside", textfont_color=COR_TEXTO)
             st.plotly_chart(fig_sent, use_container_width=True)
 
-        # Downloads
         st.markdown("---")
         st.markdown("##### ⬇️ Downloads")
         dl_row([
@@ -1349,25 +1340,20 @@ elif st.session_state.etapa == "dashboard":
 
         if st.session_state.ir2_df_full is not None:
             df_ir2_raw = st.session_state.ir2_df_full.copy()
-
-            # Mostra tabela completa do IR²
             st.markdown(f"<p style='color:{COR_SUBTEXTO}; font-size:0.85rem;'>Tabela completa da aba 'global' do arquivo IR². Score de relevância por plataforma (0–100).</p>", unsafe_allow_html=True)
 
-            # Identifica coluna do autor e colunas de ranking
             col_autor_ir2 = df_ir2_raw.columns[0]
             for c in df_ir2_raw.columns:
                 if "autor" in c.lower():
                     col_autor_ir2 = c
                     break
 
-            # Formata colunas numéricas
             cols_num = [c for c in df_ir2_raw.columns if c != col_autor_ir2]
             for c in cols_num:
                 df_ir2_raw[c] = pd.to_numeric(
                     df_ir2_raw[c].astype(str).str.replace(",","."), errors="coerce"
                 ).round(2)
 
-            # Cruzamento com base
             perfis_base = df_full["nome_publicador"].dropna().str.lower().str.strip().unique()
             def match_perfil(k):
                 if pd.isna(k): return "—"
@@ -1377,7 +1363,6 @@ elif st.session_state.etapa == "dashboard":
                 return "❌ ausente"
             df_ir2_raw["na base?"] = df_ir2_raw[col_autor_ir2].map(match_perfil)
 
-            # Encontra coluna global para ordenar
             col_global = None
             for c in df_ir2_raw.columns:
                 if "global" in c.lower():
@@ -1386,8 +1371,6 @@ elif st.session_state.etapa == "dashboard":
 
             if col_global:
                 df_ir2_raw = df_ir2_raw.sort_values(col_global, ascending=False, na_position="last")
-
-                # Gráfico top 15
                 df_top15 = df_ir2_raw.head(15).dropna(subset=[col_global])
                 fig_rank = px.bar(
                     df_top15, x=col_global, y=col_autor_ir2, orientation="h",
@@ -1418,7 +1401,6 @@ elif st.session_state.etapa == "dashboard":
             ])
 
         elif st.session_state.ir2_scores:
-            # Fallback: usa os scores extraídos
             scores = st.session_state.ir2_scores
             df_rank = pd.DataFrame([{"perfil": k, "score_global": v}
                                      for k, v in sorted(scores.items(), key=lambda x: -x[1])])
@@ -1467,7 +1449,7 @@ elif st.session_state.etapa == "dashboard":
         fig_t1 = px.bar(df_tempo, x="período", y="publicacoes", color="rede",
                         title="Publicações ao longo do tempo",
                         labels={"publicacoes":"publicações"},
-                        color_discrete_sequence=PALETTE_REDES)
+                        color_discrete_map=CORES_REDES)
         fig_t1.update_layout(**plotly_dark_layout(
             title_font_color=COR_LARANJA,
             legend=dict(font=dict(color=COR_TEXTO))
@@ -1500,81 +1482,32 @@ elif st.session_state.etapa == "dashboard":
     # ════════ TAB 5 — PUBLICAÇÕES ════════
     with tab_pub:
         st.markdown(f"#### 📋 Tabela de publicações")
-        st.markdown(f"<p style='color:{COR_SUBTEXTO}; font-size:0.85rem;'>Links clicáveis para cada publicação. Filtros globais já aplicados.</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:{COR_SUBTEXTO}; font-size:0.85rem;'>Filtros globais já aplicados.</p>", unsafe_allow_html=True)
 
-        # Colunas para exibir
         COLS_TAB = ["data","canal","nome_publicador","conteudo","interacoes","link_publicacao"]
         df_pub = df[COLS_TAB].copy()
+        
+        # Formatando as colunas
         df_pub["data"] = pd.to_datetime(df_pub["data"], errors="coerce").dt.strftime("%d/%m/%Y")
-        df_pub["conteudo"] = df_pub["conteudo"].astype(str).str[:120] + "…"
         df_pub["interacoes"] = pd.to_numeric(df_pub["interacoes"], errors="coerce").fillna(0).astype(int)
-
-        # Transforma link em HTML clicável
-        def make_link(url):
-            if pd.isna(url) or not str(url).strip().startswith("http"):
-                return "—"
-            return f'<a href="{url}" target="_blank" style="color:{COR_LARANJA};">🔗 abrir</a>'
-
-        df_pub["link"] = df_pub["link_publicacao"].map(make_link)
-        df_pub = df_pub.drop(columns=["link_publicacao"])
+        
+        # Renomeando colunas para a tabela nativa
         df_pub.columns = ["Data","Rede","Publicador","Conteúdo","Interações","Link"]
 
-        # Paginação simples
-        per_page = 50
-        total_rows = len(df_pub)
-        total_pages = max(1, (total_rows - 1) // per_page + 1)
-
-        col_pg1, col_pg2, col_pg3 = st.columns([2, 1, 2])
-        with col_pg2:
-            page = st.number_input("Página", min_value=1, max_value=total_pages, value=1, step=1)
-
-        start = (page - 1) * per_page
-        end   = min(start + per_page, total_rows)
-        st.markdown(f"<p style='color:{COR_SUBTEXTO}; font-size:0.8rem;'>Mostrando {start+1}–{end} de {total_rows:,} publicações</p>", unsafe_allow_html=True)
-
-        df_page = df_pub.iloc[start:end]
-
-        # Render como HTML com links clicáveis
-        html_table = df_page.to_html(
-            escape=False, index=False,
-            classes="pub-table",
-            border=0,
+        # Tabela nativa interativa do Streamlit
+        st.dataframe(
+            df_pub,
+            column_config={
+                "Link": st.column_config.LinkColumn("Link", display_text="🔗 acessar")
+            },
+            hide_index=True,
+            use_container_width=True,
+            height=600
         )
-        st.markdown(f"""
-        <style>
-        .pub-table {{
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.83rem;
-            color: {COR_TEXTO};
-        }}
-        .pub-table th {{
-            background: {COR_CARD};
-            color: {COR_LARANJA};
-            padding: 10px 12px;
-            text-align: left;
-            border-bottom: 2px solid {COR_BORDA};
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.05em;
-        }}
-        .pub-table td {{
-            padding: 8px 12px;
-            border-bottom: 1px solid {COR_BORDA};
-            vertical-align: top;
-            max-width: 300px;
-            word-break: break-word;
-        }}
-        .pub-table tr:hover td {{ background: {COR_CARD}; }}
-        </style>
-        {html_table}
-        """, unsafe_allow_html=True)
 
         st.markdown("---")
         st.markdown("##### ⬇️ Downloads")
 
-        # Excel com todas as colunas originais (não a versão HTML)
         df_pub_xl = df[[c for c in COLS_TAB if c in df.columns]].copy()
         df_pub_xl.columns = ["Data","Rede","Publicador","Conteúdo","Interações","Link"]
         dl_row([
@@ -1584,7 +1517,7 @@ elif st.session_state.etapa == "dashboard":
     # ════════ TAB 6 — CORPUS IRAMUTEQ ════════
     with tab_corpus:
         st.markdown(f"#### 📝 Gerador de corpus Iramuteq")
-        st.info("O corpus será gerado com os dados do filtro ativo (rede e período selecionados). Usa tokenização via NLTK — compatível com Python 3.14.")
+        st.info("O corpus será gerado com os dados do filtro ativo (rede e período selecionados). Usa tokenização via NLTK.")
 
         col_c1, col_c2 = st.columns([1, 3])
         with col_c1:
