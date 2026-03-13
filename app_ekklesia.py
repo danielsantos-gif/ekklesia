@@ -990,9 +990,12 @@ with st.sidebar:
 # ════════════════════════════════════════════════════════════════
 # ETAPA 1 — UPLOAD
 # ════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
+# ETAPA 1 — UPLOAD
+# ════════════════════════════════════════════════════════════════
 if st.session_state.etapa == "upload":
     st.markdown(f"""
-    <div style="margin-bottom: 2rem;">
+    <div style="margin-bottom: 1rem;">
         <h1 style="margin-bottom:4px;">🏛️ Ekklesia</h1>
         <p style="color:{COR_SUBTEXTO}; font-size:1rem; margin:0;">
             Faça upload das bases de dados para iniciar a análise.
@@ -1000,57 +1003,67 @@ if st.session_state.etapa == "upload":
     </div>
     """, unsafe_allow_html=True)
 
-    col_main, col_side = st.columns([3, 1])
-
-    with col_main:
-        st.markdown(f"### 📁 Upload das bases")
-        st.markdown(f"<p style='color:{COR_SUBTEXTO}; font-size:0.9rem;'>Selecione os arquivos das plataformas de monitoramento. Você pode enviar uma ou mais fontes.</p>", unsafe_allow_html=True)
-
-        c1, c2 = st.columns(2, gap="large")
-        
-        with c1:
-            st.markdown(f"<div class='upload-card'><b style='color:{COR_LARANJA}'>📡 Brandwatch</b><br><small style='color:{COR_SUBTEXTO}'>*Uso_Geral*.xlsx</small></div>", unsafe_allow_html=True)
-            f_bw = st.file_uploader("Brandwatch", type=["xlsx","csv"], key="bw", label_visibility="collapsed")
-            
-            st.markdown("<br>", unsafe_allow_html=True) # Respiro
-
-            st.markdown(f"<div class='upload-card'><b style='color:{COR_LARANJA}'>🏆 IR² (ranking)</b><br><small style='color:{COR_SUBTEXTO}'>ranking-compilado*.xlsx — aba 'global'</small></div>", unsafe_allow_html=True)
-            f_ir2 = st.file_uploader("IR²", type=["xlsx","csv"], key="ir2", label_visibility="collapsed")
-
-        with c2:
-            st.markdown(f"<div class='upload-card'><b style='color:{COR_LARANJA}'>📈 SuperMetrics</b><br><small style='color:{COR_SUBTEXTO}'>*Energisa*.xlsx</small></div>", unsafe_allow_html=True)
-            f_sm = st.file_uploader("SuperMetrics", type=["xlsx","csv"], key="sm", label_visibility="collapsed")
-            
-            st.markdown("<br>", unsafe_allow_html=True) # Respiro
-
-            st.markdown(f"<div class='upload-card'><b style='color:{COR_LARANJA}'>📊 Stilingue</b><br><small style='color:{COR_SUBTEXTO}'>RelatorioExpress*.xlsx</small></div>", unsafe_allow_html=True)
-            f_st = st.file_uploader("Stilingue", type=["xlsx","csv"], key="st", label_visibility="collapsed")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # Centralizando o último upload para simetria
-        c_center1, c_center2, c_center3 = st.columns([1, 2, 1])
-        with c_center2:
-            st.markdown(f"<div class='upload-card'><b style='color:{COR_LARANJA}'>🎵 Apify / TikTok</b><br><small style='color:{COR_SUBTEXTO}'>dataset_tiktok*.xlsx</small></div>", unsafe_allow_html=True)
-            f_ap = st.file_uploader("Apify / TikTok", type=["xlsx","csv"], key="ap", label_visibility="collapsed")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        processar = st.button("⚙️ Processar bases", type="primary", use_container_width=False)
-
-    with col_side:
-        st.markdown(f"### ℹ️ Instruções")
-        st.markdown(f"""
-        <div style="color:{COR_SUBTEXTO}; font-size:0.85rem; line-height:1.8;">
-        <b style="color:{COR_TEXTO}">1. Upload</b><br>
-        Envie os arquivos das plataformas de monitoramento.<br><br>
-        <b style="color:{COR_TEXTO}">2. Processar</b><br>
-        Clique em "Processar bases". A unificação e deduplicação acontecem automaticamente.<br><br>
-        <b style="color:{COR_TEXTO}">3. Analisar</b><br>
-        Navegue para o Dashboard para explorar os dados com filtros, gráficos e análise de IA.<br><br>
-        <b style="color:{COR_LARANJA}">Dica:</b> Você pode combinar múltiplas fontes ao mesmo tempo.
+    # ── INSTRUÇÕES HORIZONTAIS NO TOPO ──
+    st.markdown(f"""
+    <div style="background:{COR_CARD}; border:1px solid {COR_BORDA}; border-left:4px solid {COR_LARANJA}; border-radius:10px; padding:20px 24px; margin-bottom:2.5rem;">
+        <h4 style="margin-top:0; color:{COR_TEXTO}; font-size: 1.1rem; margin-bottom: 16px;">ℹ️ Como funciona</h4>
+        <div style="display: flex; flex-wrap: wrap; gap: 24px; color:{COR_SUBTEXTO}; font-size: 0.9rem; line-height: 1.5;">
+            <div style="flex: 1; min-width: 200px;">
+                <b style="color:{COR_TEXTO}">1. Upload</b><br>
+                Envie os arquivos de uma ou mais plataformas abaixo. <span style="color:{COR_LARANJA}">Você pode combinar fontes!</span>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <b style="color:{COR_TEXTO}">2. Processamento</b><br>
+                A unificação, limpeza e deduplicação das bases são feitas automaticamente.
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <b style="color:{COR_TEXTO}">3. Dashboard</b><br>
+                Navegue para a próxima etapa e explore os dados com filtros e gráficos interativos.
+            </div>
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
 
+    st.markdown(f"### 📁 Upload das bases")
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── GRADE SIMÉTRICA DE UPLOADS ──
+    c1, c2 = st.columns(2, gap="large")
+    
+    with c1:
+        st.markdown(f"<div class='upload-card'><b style='color:{COR_LARANJA}'>📡 Brandwatch</b><br><small style='color:{COR_SUBTEXTO}'>*Uso_Geral*.xlsx</small></div>", unsafe_allow_html=True)
+        f_bw = st.file_uploader("Brandwatch", type=["xlsx","csv"], key="bw", label_visibility="collapsed")
+        
+        st.markdown("<br>", unsafe_allow_html=True) # Respiro
+
+        st.markdown(f"<div class='upload-card'><b style='color:{COR_LARANJA}'>🏆 IR² (ranking)</b><br><small style='color:{COR_SUBTEXTO}'>ranking-compilado*.xlsx — aba 'global'</small></div>", unsafe_allow_html=True)
+        f_ir2 = st.file_uploader("IR²", type=["xlsx","csv"], key="ir2", label_visibility="collapsed")
+
+    with c2:
+        st.markdown(f"<div class='upload-card'><b style='color:{COR_LARANJA}'>📈 SuperMetrics</b><br><small style='color:{COR_SUBTEXTO}'>*Energisa*.xlsx</small></div>", unsafe_allow_html=True)
+        f_sm = st.file_uploader("SuperMetrics", type=["xlsx","csv"], key="sm", label_visibility="collapsed")
+        
+        st.markdown("<br>", unsafe_allow_html=True) # Respiro
+
+        st.markdown(f"<div class='upload-card'><b style='color:{COR_LARANJA}'>📊 Stilingue</b><br><small style='color:{COR_SUBTEXTO}'>RelatorioExpress*.xlsx</small></div>", unsafe_allow_html=True)
+        f_st = st.file_uploader("Stilingue", type=["xlsx","csv"], key="st", label_visibility="collapsed")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # ── ÚLTIMO CARD CENTRALIZADO ──
+    c_center1, c_center2, c_center3 = st.columns([1, 2, 1])
+    with c_center2:
+        st.markdown(f"<div class='upload-card'><b style='color:{COR_LARANJA}'>🎵 Apify / TikTok</b><br><small style='color:{COR_SUBTEXTO}'>dataset_tiktok*.xlsx</small></div>", unsafe_allow_html=True)
+        f_ap = st.file_uploader("Apify / TikTok", type=["xlsx","csv"], key="ap", label_visibility="collapsed")
+
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    # ── BOTÃO CENTRALIZADO ──
+    c_btn1, c_btn2, c_btn3 = st.columns([1, 1, 1])
+    with c_btn2:
+        processar = st.button("⚙️ Processar bases", type="primary", use_container_width=True)
+
+    # ── LÓGICA DE PROCESSAMENTO ──
     if processar:
         if not any([f_bw, f_sm, f_st, f_ap]):
             st.warning("⚠️ Envie ao menos uma base para processar.")
