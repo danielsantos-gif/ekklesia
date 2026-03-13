@@ -30,18 +30,18 @@ COR_BORDA     = "#2A2A2A"
 COR_TEXTO     = "#F0F0F0"
 COR_SUBTEXTO  = "#A0A0A0"
 
-# Paleta com as cores extraídas da imagem enviada
+# Paleta extraída diretamente do gradiente da logo "ekklesia"
 CORES_REDES = {
-    "instagram": "#E678C9",     # Rosa vibrante
-    "facebook": "#1E88C8",      # Azul principal
-    "tiktok": "#3AA66C",        # Verde claro
-    "x": "#E7E2E0",             # Off-white / Gelo (ótimo para fundo escuro)
-    "youtube": "#6A0F0F",       # Vermelho escuro
-    "linkedin": "#118A4A",      # Verde escuro
-    "reddit": "#FF6A00",        # Laranja intenso
-    "threads": "#F4A6DB",       # Rosa claro pastel
-    "bluesky": "#63B7E6",       # Azul claro
-    "desconhecido": "#FF8A1F"   # Laranja amarelado
+    "instagram": "#D82871",     # Rosa vibrante (letra 'k')
+    "facebook": "#5D114B",      # Roxo escuro (haste do 'i')
+    "tiktok": "#480D41",        # Roxo muito escuro (letra 'a')
+    "x": "#901464",             # Magenta profundo (letra 'e')
+    "youtube": "#ED5043",       # Coral/Vermelho-alaranjado (primeiro 'k')
+    "linkedin": "#7B1357",      # Vinho / Burgundy (letra 's')
+    "reddit": "#F98811",        # Laranja vivo (pingo do 'i')
+    "threads": "#B41B77",       # Magenta claro (letra 'l')
+    "bluesky": "#F9AD2A",       # Amarelo-laranja claro (início do 'e')
+    "desconhecido": "#F37625"   # Laranja médio (transição 'e' para 'k')
 }
 # ════════════════════════════════════════════════════════════════
 # HELPERS GERAIS
