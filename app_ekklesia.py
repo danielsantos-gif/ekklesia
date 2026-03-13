@@ -30,20 +30,19 @@ COR_BORDA     = "#2A2A2A"
 COR_TEXTO     = "#F0F0F0"
 COR_SUBTEXTO  = "#A0A0A0"
 
-# Paleta com as cores oficiais das redes
+# Paleta com as novas cores para as redes sociais
 CORES_REDES = {
-    "instagram": "#E1306C",
-    "facebook": "#1877F2",
-    "tiktok": "#25F4EE",
-    "x": "#1DA1F2",
-    "youtube": "#FF0000",
-    "linkedin": "#0A66C2",
-    "reddit": "#FF4500",
-    "threads": "#000000",
-    "bluesky": "#0285FF",
-    "desconhecido": "#888888"
+    "instagram": "#F689E6",     # Rosa neon
+    "facebook": "#0689D6",      # Azul metrô
+    "tiktok": "#1A1718",        # Preto profundo
+    "x": "#7CA6BE",             # Azul acinzentado
+    "youtube": "#6E160D",       # Vermelho tijolo escuro
+    "linkedin": "#067755",      # Verde linha
+    "reddit": "#F25905",        # Laranja vibrante
+    "threads": "#EEE9EA",       # Branco suave
+    "bluesky": "#C377AE",       # Rosa pastel
+    "desconhecido": "#924027"   # Marrom tijolo
 }
-
 # ════════════════════════════════════════════════════════════════
 # HELPERS GERAIS
 # ════════════════════════════════════════════════════════════════
